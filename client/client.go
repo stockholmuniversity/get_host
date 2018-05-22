@@ -3,9 +3,10 @@ package main
 import (
 	"fmt"
 	"github.com/miekg/dns"
-	"log"
-	"net"
+	//	"log"
+	//	"net"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -16,18 +17,20 @@ func main() {
 	hostToGet := os.Args[1]
 	fmt.Println("Host to get: ", hostToGet)
 
-	config, _ := dns.ClientConfigFromFile("/etc/resolv.conf")
-	c := new(dns.Client)
+	t := new(dns.Transfer)
 	m := new(dns.Msg)
-	m.SetQuestion(dns.Fqdn("it.su.se"), dns.TypeAXFR)
-	m.RecursionDesired = true
-	r, _, err := c.Exchange(m, net.JoinHostPort(config.Servers[0], config.Port))
-	if r == nil {
-		log.Fatalf("*** error: %s\n", err.Error())
+	m.SetAxfr("***REMOVED***")
+	c, err := t.In(m, "***REMOVED***:53")
+	if err != nil {
+		fmt.Println("Got error: ", err)
+		os.Exit(1)
 	}
+	for envelope := range c { // Range read from channel c
+		for _, rr := range envelope.RR { // Iterate over all Resource Records
+			name := strings.TrimRight(rr.Header().Name, ".")
+			ttl := rr.Header().Ttl
 
-	// Stuff must be in the answer section
-	for _, a := range r.Answer {
-		fmt.Printf("%v\n", a)
+			fmt.Println(name, ttl)
+		}
 	}
 }
