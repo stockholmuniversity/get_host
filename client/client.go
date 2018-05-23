@@ -15,8 +15,8 @@ func main() {
 		os.Exit(1)
 	}
 	hostToGet := os.Args[1]
-	fmt.Println("Host to get: ", hostToGet)
-
+	var aRecords map[string]int
+	aRecords = make(map[string]int)
 	t := new(dns.Transfer)
 	m := new(dns.Msg)
 	m.SetAxfr("***REMOVED***")
@@ -25,12 +25,21 @@ func main() {
 		fmt.Println("Got error: ", err)
 		os.Exit(1)
 	}
+
 	for envelope := range c { // Range read from channel c
 		for _, rr := range envelope.RR { // Iterate over all Resource Records
 			name := strings.TrimRight(rr.Header().Name, ".")
-			ttl := rr.Header().Ttl
+			rrtype := rr.Header().Rrtype
+			//ttl := rr.Header().Ttl
 
-			fmt.Println(name, ttl)
+			if rrtype == dns.TypeA {
+				if strings.Contains(name, hostToGet) {
+					aRecords[name] = 1
+				}
+			}
 		}
+	}
+	for hostname := range aRecords {
+		fmt.Println(hostname)
 	}
 }
