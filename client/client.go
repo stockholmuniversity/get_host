@@ -6,6 +6,7 @@ import (
 	//	"log"
 	//	"net"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -15,8 +16,7 @@ func main() {
 		os.Exit(1)
 	}
 	hostToGet := os.Args[1]
-	var aRecords map[string]int
-	aRecords = make(map[string]int)
+	aRecords := make(map[string]uint16)
 	t := new(dns.Transfer)
 	m := new(dns.Msg)
 	m.SetAxfr("***REMOVED***")
@@ -34,12 +34,18 @@ func main() {
 
 			if rrtype == dns.TypeA {
 				if strings.Contains(name, hostToGet) {
-					aRecords[name] = 1
+					aRecords[name] = rrtype
 				}
 			}
 		}
 	}
-	for hostname := range aRecords {
+
+	keys := make([]string, 0, len(aRecords))
+	for key := range aRecords {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, hostname := range keys {
 		fmt.Println(hostname)
 	}
 }
