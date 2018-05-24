@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/miekg/dns"
-	//	"log"
-	//	"net"
 	"os"
 	"sort"
 	"strings"
@@ -16,9 +14,12 @@ func main() {
 		os.Exit(1)
 	}
 	hostToGet := os.Args[1]
-	aRecords := make(map[string]uint16)
-	t := new(dns.Transfer)
-	m := new(dns.Msg)
+	aRR := make(map[string]uint16)
+	cnameRR := make(map[string]uint16)
+	//	t := new(dns.Transfer)
+	//	m := new(dns.Msg)
+	t := &dns.Transfer{}
+	m := &dns.Msg{}
 	m.SetAxfr("***REMOVED***")
 	c, err := t.In(m, "***REMOVED***:53")
 	if err != nil {
@@ -32,17 +33,20 @@ func main() {
 			rrtype := rr.Header().Rrtype
 			//ttl := rr.Header().Ttl
 
-			if rrtype == dns.TypeA {
-				if strings.Contains(name, hostToGet) {
-					aRecords[name] = rrtype
+			if strings.Contains(name, hostToGet) {
+				if rrtype == dns.TypeA {
+					aRR[name] = rrtype
+				}
+				if rrtype == dns.TypeCNAME {
+					cnameRR[name] = rrtype
 				}
 			}
 		}
 	}
 
-	keys := make([]string, 0, len(aRecords))
-	for key := range aRecords {
-		keys = append(keys, key)
+	keys := []string{}
+	for k := range aRR {
+		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	for _, hostname := range keys {
