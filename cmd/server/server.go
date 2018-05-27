@@ -1,4 +1,4 @@
-package gethost
+package main
 
 import (
 	"fmt"
