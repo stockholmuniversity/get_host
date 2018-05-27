@@ -1,8 +1,8 @@
-package gethost
+package client
 
 import (
 	"fmt"
-	"gethost"
+	"gethost/internal"
 	"os"
 	"sort"
 	"suversion"
