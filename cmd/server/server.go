@@ -61,15 +61,15 @@ func httpResponse(w http.ResponseWriter, r *http.Request) {
 	hostToGet := vars["id"]
 
 	keys := []string{}
-	for k := range dnsRR {
-		keys = append(keys, k)
+	for hostname := range dnsRR {
+		if strings.Contains(hostname, hostToGet) {
+			keys = append(keys, hostname)
+		}
 	}
 	sort.Strings(keys)
 
 	for _, hostname := range keys {
-		if strings.Contains(hostname, hostToGet) {
-			fmt.Println("Send match for", hostToGet)
-			fmt.Fprintf(w, hostname+"\n")
-		}
+		fmt.Println("Send match for", hostToGet)
+		fmt.Fprintf(w, hostname+"\n")
 	}
 }
