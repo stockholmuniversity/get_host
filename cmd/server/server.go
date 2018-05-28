@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -60,16 +61,19 @@ func httpResponse(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	hostToGet := vars["id"]
 
-	keys := []string{}
+	hostnames := []string{}
 	for hostname := range dnsRR {
 		if strings.Contains(hostname, hostToGet) {
-			keys = append(keys, hostname)
+			hostnames = append(hostnames, hostname)
 		}
 	}
-	sort.Strings(keys)
-
-	for _, hostname := range keys {
-		fmt.Println("Send match for", hostToGet)
-		fmt.Fprintf(w, hostname+"\n")
+	sort.Strings(hostnames)
+	j, err := json.Marshal(hostnames)
+	if err != nil {
+		log.Println("Error:", err)
+		os.Exit(1)
 	}
+
+	fmt.Println("Send match for", hostToGet)
+	fmt.Fprintf(w, string(j))
 }
