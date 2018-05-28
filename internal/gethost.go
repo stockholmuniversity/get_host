@@ -8,7 +8,9 @@ import (
 	"strings"
 )
 
-// GetRRforZone sends dns RR over an channel
+// GetRRforZone send all CNAME and A records that match 'hostToGet' over channel c.
+// If 'hostToGet' is empty all CNAME and A records for zone z will be returned.
+// This function is well suited to be started in parallel as an go routine.
 func GetRRforZone(z string, hostToGet string, c chan map[string]uint16) {
 	t := &dns.Transfer{}
 	m := &dns.Msg{}
