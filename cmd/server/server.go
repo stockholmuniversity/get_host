@@ -6,39 +6,40 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strings"
+	"time"
 
-	"gethost"
 	"github.com/gorilla/mux"
+
+	"gethost/internal"
 	"suversion"
 )
+
+var dnsRR map[string]uint16
 
 func main() {
 	suversion.PrintVersionAndExit()
 
-	//dnsRR := map[string]uint16{}
-	dnsRR := buildAndUpdateDNS()
-
-	keys := []string{}
-	for k := range dnsRR {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	for _, hostname := range keys {
-		fmt.Println(hostname)
-	}
+	go updateDNS()
 	handleRequests()
+}
+
+func updateDNS() {
+	for {
+		dnsRR = buildAndUpdateDNS()
+		time.Sleep(10 * time.Second)
+	}
 }
 
 func buildAndUpdateDNS() map[string]uint16 {
 	zones := []string{"***REMOVED***", "***REMOVED***", "***REMOVED***", "db.***REMOVED***"}
-	dnsRR := map[string]uint16{}
 	c := make(chan map[string]uint16)
 
 	for _, z := range zones {
 		go gethost.GetRRforZone(z, "", c)
 	}
 
+	dnsRR := map[string]uint16{}
 	for range zones {
 		m := <-c
 		for k, v := range m {
@@ -57,7 +58,18 @@ func handleRequests() {
 
 func httpResponse(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	key := vars["id"]
+	hostToGet := vars["id"]
 
-	fmt.Fprintf(w, "Key: "+key)
+	keys := []string{}
+	for k := range dnsRR {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, hostname := range keys {
+		if strings.Contains(hostname, hostToGet) {
+			fmt.Println("Send match for", hostToGet)
+			fmt.Fprintf(w, hostname+"\n")
+		}
+	}
 }
