@@ -74,6 +74,6 @@ func httpResponse(w http.ResponseWriter, r *http.Request) {
 		os.Exit(1)
 	}
 
-	fmt.Println("Send match for", hostToGet)
+	fmt.Println("Send match for", hostToGet, ":", string(j))
 	fmt.Fprintf(w, string(j))
 }
