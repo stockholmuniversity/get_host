@@ -8,6 +8,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -17,6 +18,7 @@ import (
 )
 
 var dnsRR map[string]uint16
+var mtx sync.RWMutex
 
 func main() {
 	suversion.PrintVersionAndExit()
@@ -27,8 +29,10 @@ func main() {
 
 func updateDNS() {
 	for {
-        // TODO Dont just replace global dnsRR or use mutex
-		dnsRR = buildAndUpdateDNS()
+		dnsRRnew := buildAndUpdateDNS()
+		mtx.Lock()
+		dnsRR = dnsRRnew
+		mtx.Unlock()
 		time.Sleep(10 * time.Second)
 	}
 }
@@ -63,12 +67,14 @@ func httpResponse(w http.ResponseWriter, r *http.Request) {
 	hostToGet := vars["id"]
 
 	hostnames := []string{}
-    // TODO use mutex read-lock
+
+	mtx.RLock()
 	for hostname := range dnsRR {
 		if strings.Contains(hostname, hostToGet) {
 			hostnames = append(hostnames, hostname)
 		}
 	}
+	mtx.RUnlock()
 	sort.Strings(hostnames)
 
 	j, err := json.Marshal(hostnames)
