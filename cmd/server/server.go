@@ -27,6 +27,7 @@ func main() {
 
 func updateDNS() {
 	for {
+        // TODO Dont just replace global dnsRR or use mutex
 		dnsRR = buildAndUpdateDNS()
 		time.Sleep(10 * time.Second)
 	}
@@ -62,12 +63,14 @@ func httpResponse(w http.ResponseWriter, r *http.Request) {
 	hostToGet := vars["id"]
 
 	hostnames := []string{}
+    // TODO use mutex read-lock
 	for hostname := range dnsRR {
 		if strings.Contains(hostname, hostToGet) {
 			hostnames = append(hostnames, hostname)
 		}
 	}
 	sort.Strings(hostnames)
+
 	j, err := json.Marshal(hostnames)
 	if err != nil {
 		log.Println("Error:", err)
