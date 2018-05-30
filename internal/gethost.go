@@ -1,17 +1,27 @@
 package gethost
 
 import (
+	"context"
 	"fmt"
 	"github.com/miekg/dns"
+	"io"
 	"log"
 	"os"
 	"strings"
+
+	opentracing "github.com/opentracing/opentracing-go"
+	jaeger "github.com/uber/jaeger-client-go"
+	config "github.com/uber/jaeger-client-go/config"
 )
 
 // GetRRforZone send all CNAME and A records that match 'hostToGet' over channel c.
 // If 'hostToGet' is empty all CNAME and A records for zone z will be returned.
 // This function is well suited to be started in parallel as an go routine.
-func GetRRforZone(z string, hostToGet string, c chan map[string]uint16) {
+func GetRRforZone(ctx context.Context, z string, hostToGet string, c chan map[string]uint16) {
+	span, _ := opentracing.StartSpanFromContext(ctx, "GetRRforZone")
+	span.SetTag("zone", z)
+	defer span.Finish()
+
 	t := &dns.Transfer{}
 	m := &dns.Msg{}
 	m.SetAxfr(z)
@@ -43,4 +53,22 @@ func GetRRforZone(z string, hostToGet string, c chan map[string]uint16) {
 	}
 	c <- dnsRR
 	log.Println("Done writing zone", z)
+}
+
+// JaegerInit initialises jaeger object.
+func JaegerInit(service string) (opentracing.Tracer, io.Closer) {
+	cfg := &config.Configuration{
+		Sampler: &config.SamplerConfig{
+			Type:  "const",
+			Param: 1,
+		},
+		Reporter: &config.ReporterConfig{
+			LogSpans: true,
+		},
+	}
+	tracer, closer, err := cfg.New(service, config.Logger(jaeger.StdLogger))
+	if err != nil {
+		panic(fmt.Sprintf("ERROR: cannot init Jaeger: %v\n", err))
+	}
+	return tracer, closer
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -8,6 +9,9 @@ import (
 	"net/http"
 	"os"
 	"sort"
+
+	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
 
 	"gethost/internal"
 	"suversion"
@@ -20,12 +24,21 @@ func main() {
 		fmt.Println("Need one hostname to look for as argument")
 		os.Exit(1)
 	}
+
+	tracer, closer := gethost.JaegerInit("gethost-client")
+	defer closer.Close()
+	opentracing.SetGlobalTracer(tracer)
+
+	span := tracer.StartSpan("Get-hosts")
+	defer span.Finish()
+	ctx := opentracing.ContextWithSpan(context.Background(), span)
+
 	hostToGet := os.Args[1]
 
 	dnsRR := map[string]uint16{}
 	c := make(chan map[string]uint16)
 
-	r, err := getFromServer(hostToGet)
+	r, err := getFromServer(ctx, hostToGet)
 	if err != nil {
 		log.Println(err)
 	}
@@ -33,12 +46,15 @@ func main() {
 		for _, i := range r {
 			fmt.Println(i)
 		}
+
+		span.Finish()
+		closer.Close() // Because defer is not called in os.Exit
 		os.Exit(0)
 	}
 
 	zones := []string{"***REMOVED***", "***REMOVED***", "***REMOVED***", "db.***REMOVED***"}
 	for _, z := range zones {
-		go gethost.GetRRforZone(z, hostToGet, c)
+		go gethost.GetRRforZone(ctx, z, hostToGet, c)
 	}
 
 	for range zones {
@@ -59,13 +75,33 @@ func main() {
 	}
 }
 
-func getFromServer(z string) ([]string, error) {
-	r, err := http.Get("http://localhost:8080/" + z)
+func getFromServer(ctx context.Context, z string) ([]string, error) {
+	span, _ := opentracing.StartSpanFromContext(ctx, "getFromServer")
+	defer span.Finish()
+
+	url := "http://localhost:8080/" + z
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	ext.SpanKindRPCClient.Set(span)
+	ext.HTTPUrl.Set(span, url)
+	ext.HTTPMethod.Set(span, "GET")
+	span.Tracer().Inject(
+		span.Context(),
+		opentracing.HTTPHeaders,
+		opentracing.HTTPHeadersCarrier(req.Header),
+	)
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	defer r.Body.Close()
-	body, err := ioutil.ReadAll(r.Body)
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+
 	slice := []string{}
 	err = json.Unmarshal(body, &slice)
 	if err != nil {
