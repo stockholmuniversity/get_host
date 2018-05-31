@@ -44,7 +44,7 @@ func schedUpdate(tracer opentracing.Tracer) {
 
 		updateDNS(ctx)
 		span.Finish()
-		time.Sleep(10 * time.Second)
+		time.Sleep(900 * time.Second)
 	}
 }
 
