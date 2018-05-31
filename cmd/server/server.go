@@ -33,27 +33,37 @@ func main() {
 	defer closer.Close()
 	opentracing.SetGlobalTracer(tracer)
 
-	go updateDNS(tracer)
+	go schedUpdate(tracer)
 	handleRequests()
 }
 
-func updateDNS(tracer opentracing.Tracer) {
-
+func schedUpdate(tracer opentracing.Tracer) {
 	for {
-		span := tracer.StartSpan("updateDNS")
+		span := tracer.StartSpan("schedUpdate")
 		ctx := opentracing.ContextWithSpan(context.Background(), span)
 
-		dnsRRnew := buildAndUpdateDNS(ctx)
-		mtx.Lock()
-		dnsRR = dnsRRnew
-		mtx.Unlock()
-
+		updateDNS(ctx)
 		span.Finish()
 		time.Sleep(10 * time.Second)
 	}
 }
 
-func buildAndUpdateDNS(ctx context.Context) map[string]uint16 {
+func updateDNS(ctx context.Context) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "updateDNS")
+	defer span.Finish()
+
+	dnsRRnew := buildDNS(ctx)
+	mtx.Lock()
+	dnsRR = dnsRRnew
+	mtx.Unlock()
+
+	span.Finish()
+}
+
+func buildDNS(ctx context.Context) map[string]uint16 {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "buildDNS")
+	defer span.Finish()
+
 	zones := []string{"***REMOVED***", "***REMOVED***", "***REMOVED***", "db.***REMOVED***"}
 	c := make(chan map[string]uint16)
 
@@ -74,6 +84,7 @@ func buildAndUpdateDNS(ctx context.Context) map[string]uint16 {
 func handleRequests() {
 	myRouter := mux.NewRouter().StrictSlash(true)
 	myRouter.HandleFunc("/{id}", httpResponse)
+	myRouter.HandleFunc("/{id}/{nc}", httpResponse)
 	port := ":" + os.Args[1]
 	log.Fatal(http.ListenAndServe(port, myRouter))
 }
@@ -81,10 +92,17 @@ func handleRequests() {
 func httpResponse(w http.ResponseWriter, r *http.Request) {
 	spanCtx, _ := tracer.Extract(opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(r.Header))
 	span := tracer.StartSpan("httpResponse", ext.RPCServerOption(spanCtx))
+	ctx := opentracing.ContextWithSpan(context.Background(), span)
 	defer span.Finish()
 
 	vars := mux.Vars(r)
 	hostToGet := vars["id"]
+	noCache := vars["nc"]
+
+	if noCache == "nc" {
+		log.Println("got nc flag")
+		updateDNS(ctx)
+	}
 
 	hostnames := []string{}
 
