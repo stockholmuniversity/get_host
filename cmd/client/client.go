@@ -35,22 +35,26 @@ func main() {
 
 	hostToGet := os.Args[1]
 
-	dnsRR := map[string]uint16{}
-	c := make(chan map[string]uint16)
-
 	r, err := getFromServer(ctx, hostToGet)
 	if err != nil {
 		log.Println(err)
 	}
-	if r != nil {
-		for _, i := range r {
-			fmt.Println(i)
-		}
-
-		span.Finish()
-		closer.Close() // Because defer is not called in os.Exit
-		os.Exit(0)
+	if r == nil {
+		r = getFromDNS(ctx, hostToGet)
 	}
+
+	for _, i := range r {
+		fmt.Println(i)
+	}
+
+}
+
+func getFromDNS(ctx context.Context, hostToGet string) []string {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "getFromDNS")
+	defer span.Finish()
+
+	dnsRR := map[string]uint16{}
+	c := make(chan map[string]uint16)
 
 	zones := []string{"***REMOVED***", "***REMOVED***", "***REMOVED***", "db.***REMOVED***"}
 	for _, z := range zones {
@@ -68,11 +72,10 @@ func main() {
 	for k := range dnsRR {
 		keys = append(keys, k)
 	}
-	sort.Strings(keys)
 
-	for _, hostname := range keys {
-		fmt.Println(hostname)
-	}
+	sort.Strings(keys)
+	return keys
+
 }
 
 func getFromServer(ctx context.Context, z string) ([]string, error) {
