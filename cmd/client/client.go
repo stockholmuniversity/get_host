@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
@@ -97,7 +98,8 @@ func getFromServer(ctx context.Context, z string) ([]string, error) {
 		opentracing.HTTPHeadersCarrier(req.Header),
 	)
 
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{Timeout: 2000 * time.Millisecond}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
