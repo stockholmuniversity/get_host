@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"sort"
 	"time"
 
@@ -19,23 +20,32 @@ import (
 )
 
 func main() {
+
+	useTracing := flag.Bool("tracing", false, "Enable tracing of calls.")
+	useNC := flag.Bool("nc", false, "Do not use cached awnser")
+
+    // TODO: Use default input for hostToGet
+    hostToGet := flag.Arg()
+	flag.StringVar(&hostToGet, "host", "", "Hostname to match for")
 	suversion.PrintVersionAndExit()
 
-	if len(os.Args) != 2 {
-		fmt.Println("Need one hostname to look for as argument")
-		os.Exit(1)
+	var tracer opentracing.Tracer
+	var closer io.Closer
+
+	if *useTracing == true {
+		tracer, closer = gethost.JaegerInit("gethost-client")
+		defer closer.Close()
+	} else {
+		tracer = opentracing.GlobalTracer()
 	}
-
-	tracer, closer := gethost.JaegerInit("gethost-client")
-	defer closer.Close()
-	opentracing.SetGlobalTracer(tracer)
-
 	span := tracer.StartSpan("Get-hosts")
 	defer span.Finish()
 	ctx := opentracing.ContextWithSpan(context.Background(), span)
 
-	hostToGet := os.Args[1]
-
+	// Server uses hostname/nc to force reload of cache.
+	if *useNC == true {
+		hostToGet = hostToGet + "/nc"
+	}
 	r, err := getFromServer(ctx, hostToGet)
 	if err != nil {
 		log.Println(err)
