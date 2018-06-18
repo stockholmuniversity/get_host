@@ -17,14 +17,14 @@ import (
 // GetRRforZone send all CNAME and A records that match 'hostToGet' over channel c.
 // If 'hostToGet' is empty all CNAME and A records for zone z will be returned.
 // This function is well suited to be started in parallel as an go routine.
-func GetRRforZone(ctx context.Context, z string, hostToGet string, c chan map[string]uint16) {
+func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan map[string]uint16, verbose bool) {
 	span, _ := opentracing.StartSpanFromContext(ctx, "GetRRforZone")
-	span.SetTag("zone", z)
+	span.SetTag("zone", zone)
 	defer span.Finish()
 
 	t := &dns.Transfer{}
 	m := &dns.Msg{}
-	m.SetAxfr(z)
+	m.SetAxfr(zone)
 	e, err := t.In(m, "***REMOVED***:53")
 	if err != nil {
 		fmt.Println("Got error: ", err)
@@ -52,7 +52,9 @@ func GetRRforZone(ctx context.Context, z string, hostToGet string, c chan map[st
 		}
 	}
 	c <- dnsRR
-	log.Println("Done writing zone", z)
+	if verbose == true {
+		log.Println("Done writing zone", zone)
+	}
 }
 
 // JaegerInit initialises jaeger object.

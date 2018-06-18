@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -26,25 +28,33 @@ var mtx sync.RWMutex
 var tracer opentracing.Tracer
 
 func main() {
+	useTracing := flag.Bool("tracing", false, "Enable tracing of calls.")
+	port := flag.Int("port", 8080, "Port for server")
+	timeout := flag.Int("ttl", 900, "Cache reload interval in seconds")
 	suversion.PrintVersionAndExit()
 
 	var closer io.Closer
-	tracer, closer = gethost.JaegerInit("gethost-server")
-	defer closer.Close()
+
+	if *useTracing == true {
+		tracer, closer = gethost.JaegerInit("gethost-server")
+		defer closer.Close()
+	} else {
+		tracer = opentracing.GlobalTracer()
+	}
 	opentracing.SetGlobalTracer(tracer)
 
-	go schedUpdate(tracer)
-	handleRequests()
+	go schedUpdate(tracer, *timeout)
+	handleRequests(*port)
 }
 
-func schedUpdate(tracer opentracing.Tracer) {
+func schedUpdate(tracer opentracing.Tracer, timeout int) {
 	for {
 		span := tracer.StartSpan("schedUpdate")
 		ctx := opentracing.ContextWithSpan(context.Background(), span)
 
 		updateDNS(ctx)
 		span.Finish()
-		time.Sleep(900 * time.Second)
+		time.Sleep(time.Duration(timeout) * time.Second)
 	}
 }
 
@@ -68,7 +78,7 @@ func buildDNS(ctx context.Context) map[string]uint16 {
 	c := make(chan map[string]uint16)
 
 	for _, z := range zones {
-		go gethost.GetRRforZone(ctx, z, "", c)
+		go gethost.GetRRforZone(ctx, z, "", c, true)
 	}
 
 	dnsRR := map[string]uint16{}
@@ -81,12 +91,13 @@ func buildDNS(ctx context.Context) map[string]uint16 {
 	return dnsRR
 }
 
-func handleRequests() {
+func handleRequests(port int) {
 	myRouter := mux.NewRouter().StrictSlash(true)
 	myRouter.HandleFunc("/{id}", httpResponse)
 	myRouter.HandleFunc("/{id}/{nc}", httpResponse)
-	port := ":" + os.Args[1]
-	log.Fatal(http.ListenAndServe(port, myRouter))
+	addr := ":" + strconv.Itoa(port)
+	log.Println("Staring server on", addr)
+	log.Fatal(http.ListenAndServe(addr, myRouter))
 }
 
 func httpResponse(w http.ResponseWriter, r *http.Request) {

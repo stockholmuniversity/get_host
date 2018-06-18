@@ -22,12 +22,14 @@ import (
 func main() {
 
 	useTracing := flag.Bool("tracing", false, "Enable tracing of calls.")
-	useNC := flag.Bool("nc", false, "Do not use cached awnser")
-
-    // TODO: Use default input for hostToGet
-    hostToGet := flag.Arg()
-	flag.StringVar(&hostToGet, "host", "", "Hostname to match for")
+	useNC := flag.Bool("nc", false, "No Cache. Force reload of cache")
 	suversion.PrintVersionAndExit()
+
+	var hostToGet string
+	flagsLeftover := flag.Args()
+	if len(flagsLeftover) > 0 {
+		hostToGet = flagsLeftover[0]
+	}
 
 	var tracer opentracing.Tracer
 	var closer io.Closer
@@ -50,6 +52,7 @@ func main() {
 	if err != nil {
 		log.Println(err)
 	}
+	// No match from server, do lookup ourself
 	if r == nil {
 		r = getFromDNS(ctx, hostToGet)
 	}
@@ -69,7 +72,7 @@ func getFromDNS(ctx context.Context, hostToGet string) []string {
 
 	zones := []string{"***REMOVED***", "***REMOVED***", "***REMOVED***", "db.***REMOVED***"}
 	for _, z := range zones {
-		go gethost.GetRRforZone(ctx, z, hostToGet, c)
+		go gethost.GetRRforZone(ctx, z, hostToGet, c, false)
 	}
 
 	for range zones {
