@@ -92,11 +92,11 @@ func getFromDNS(ctx context.Context, hostToGet string) []string {
 
 }
 
-func getFromServer(ctx context.Context, z string) ([]string, error) {
+func getFromServer(ctx context.Context, hostToGet string) ([]string, error) {
 	span, _ := opentracing.StartSpanFromContext(ctx, "getFromServer")
 	defer span.Finish()
 
-	url := "http://localhost:8080/" + z
+	url := "http://localhost:8080/" + hostToGet
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		panic(err.Error())
