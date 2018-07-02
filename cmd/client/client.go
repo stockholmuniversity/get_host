@@ -16,14 +16,14 @@ import (
 	"github.com/opentracing/opentracing-go/ext"
 
 	"gethost/internal"
-	"suversion"
+	"suGoVersion"
 )
 
 func main() {
 
 	useTracing := flag.Bool("tracing", false, "Enable tracing of calls.")
 	useNC := flag.Bool("nc", false, "No Cache. Force reload of cache")
-	suversion.PrintVersionAndExit()
+	suGoVersion.PrintVersionAndExit()
 
 	var hostToGet string
 	flagsLeftover := flag.Args()

@@ -20,7 +20,7 @@ import (
 	"github.com/opentracing/opentracing-go/ext"
 
 	"gethost/internal"
-	"suversion"
+	"suGoVersion"
 )
 
 var dnsRR map[string]uint16
@@ -31,7 +31,7 @@ func main() {
 	useTracing := flag.Bool("tracing", false, "Enable tracing of calls.")
 	port := flag.Int("port", 8080, "Port for server")
 	timeout := flag.Int("ttl", 900, "Cache reload interval in seconds")
-	suversion.PrintVersionAndExit()
+	suGoVersion.PrintVersionAndExit()
 
 	var closer io.Closer
 
