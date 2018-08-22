@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"sort"
 	"time"
 
@@ -29,6 +30,11 @@ func main() {
 	flagsLeftover := flag.Args()
 	if len(flagsLeftover) > 0 {
 		hostToGet = flagsLeftover[0]
+	}
+
+	if hostToGet == "" {
+		log.Println("Need part of hostname to match against")
+		os.Exit(1)
 	}
 
 	var tracer opentracing.Tracer
