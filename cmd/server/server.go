@@ -56,6 +56,7 @@ func printVerbose(output string) {
 }
 
 func schedUpdate(tracer opentracing.Tracer, timeout int) {
+	log.Printf("Starting scheduled update of cache every %v seconds.\n", timeout)
 	for {
 		span := tracer.StartSpan("schedUpdate")
 		ctx := opentracing.ContextWithSpan(context.Background(), span)
