@@ -24,6 +24,7 @@ func main() {
 
 	useTracing := flag.Bool("tracing", false, "Enable tracing of calls.")
 	useNC := flag.Bool("nc", false, "No Cache. Force reload of cache")
+	getAllHosts := flag.Bool("a", false, "Get all hosts")
 	suGoVersion.PrintVersionAndExit()
 
 	var hostToGet string
@@ -32,7 +33,7 @@ func main() {
 		hostToGet = flagsLeftover[0]
 	}
 
-	if hostToGet == "" {
+	if hostToGet == "" && *getAllHosts == false {
 		log.Println("Need part of hostname to match against")
 		os.Exit(1)
 	}

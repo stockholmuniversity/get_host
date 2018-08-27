@@ -26,11 +26,13 @@ import (
 var dnsRR map[string]uint16
 var mtx sync.RWMutex
 var tracer opentracing.Tracer
+var verbose *bool
 
 func main() {
 	useTracing := flag.Bool("tracing", false, "Enable tracing of calls.")
 	port := flag.Int("port", 8080, "Port for server")
 	timeout := flag.Int("ttl", 900, "Cache reload interval in seconds")
+	verbose = flag.Bool("verbose", false, "Print reload and responses to questions to standard out")
 	suGoVersion.PrintVersionAndExit()
 
 	var closer io.Closer
@@ -45,6 +47,12 @@ func main() {
 
 	go schedUpdate(tracer, *timeout)
 	handleRequests(*port)
+}
+
+func printVerbose(output string) {
+	if *verbose == true {
+		log.Println(output)
+	}
 }
 
 func schedUpdate(tracer opentracing.Tracer, timeout int) {
@@ -62,15 +70,14 @@ func updateDNS(ctx context.Context) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "updateDNS")
 	defer span.Finish()
 
-	dnsRRnew := buildDNS(ctx)
+	dnsRRnew := buildDNS(ctx, *verbose)
 	mtx.Lock()
 	dnsRR = dnsRRnew
 	mtx.Unlock()
 
-	span.Finish()
 }
 
-func buildDNS(ctx context.Context) map[string]uint16 {
+func buildDNS(ctx context.Context, verbose bool) map[string]uint16 {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "buildDNS")
 	defer span.Finish()
 
@@ -78,7 +85,7 @@ func buildDNS(ctx context.Context) map[string]uint16 {
 	c := make(chan map[string]uint16)
 
 	for _, z := range zones {
-		go gethost.GetRRforZone(ctx, z, "", c, true)
+		go gethost.GetRRforZone(ctx, z, "", c, verbose)
 	}
 
 	dnsRR := map[string]uint16{}
@@ -132,6 +139,6 @@ func httpResponse(w http.ResponseWriter, r *http.Request) {
 		os.Exit(1)
 	}
 
-	fmt.Println("Send match for", hostToGet, ":", string(j))
+	printVerbose("Send match for " + hostToGet + ": " + string(j))
 	fmt.Fprintf(w, string(j))
 }
