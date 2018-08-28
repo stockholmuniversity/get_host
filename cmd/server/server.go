@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/miekg/dns"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 
@@ -23,7 +24,7 @@ import (
 	"suGoVersion"
 )
 
-var dnsRR map[string]uint16
+var dnsRR map[string][]dns.RR
 var mtx sync.RWMutex
 var tracer opentracing.Tracer
 var verbose *bool
@@ -78,18 +79,18 @@ func updateDNS(ctx context.Context) {
 
 }
 
-func buildDNS(ctx context.Context, verbose bool) map[string]uint16 {
+func buildDNS(ctx context.Context, verbose bool) map[string][]dns.RR {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "buildDNS")
 	defer span.Finish()
 
 	zones := []string{"***REMOVED***", "***REMOVED***", "***REMOVED***", "db.***REMOVED***"}
-	c := make(chan map[string]uint16)
+	c := make(chan map[string][]dns.RR)
 
 	for _, z := range zones {
 		go gethost.GetRRforZone(ctx, z, "", c, verbose)
 	}
 
-	dnsRR := map[string]uint16{}
+	dnsRR := map[string][]dns.RR{}
 	for range zones {
 		m := <-c
 		for k, v := range m {

@@ -13,6 +13,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/miekg/dns"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 
@@ -74,8 +75,8 @@ func getFromDNS(ctx context.Context, hostToGet string) []string {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "getFromDNS")
 	defer span.Finish()
 
-	dnsRR := map[string]uint16{}
-	c := make(chan map[string]uint16)
+	dnsRR := map[string][]dns.RR{}
+	c := make(chan map[string][]dns.RR)
 
 	zones := []string{"***REMOVED***", "***REMOVED***", "***REMOVED***", "db.***REMOVED***"}
 	for _, z := range zones {

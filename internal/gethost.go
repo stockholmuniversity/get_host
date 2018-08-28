@@ -3,11 +3,12 @@ package gethost
 import (
 	"context"
 	"fmt"
-	"github.com/miekg/dns"
 	"io"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/miekg/dns"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	jaeger "github.com/uber/jaeger-client-go"
@@ -17,7 +18,7 @@ import (
 // GetRRforZone send all CNAME and A records that match 'hostToGet' over channel c.
 // If 'hostToGet' is empty all CNAME and A records for zone z will be returned.
 // This function is well suited to be started in parallel as an go routine.
-func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan map[string]uint16, verbose bool) {
+func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan map[string][]dns.RR, verbose bool) {
 	span, _ := opentracing.StartSpanFromContext(ctx, "GetRRforZone")
 	span.SetTag("zone", zone)
 	defer span.Finish()
@@ -31,22 +32,22 @@ func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan map
 		os.Exit(1)
 	}
 
-	dnsRR := map[string]uint16{}
+	dnsRR := map[string][]dns.RR{}
 	for envelope := range e { // Range read from channel e
 		for _, rr := range envelope.RR { // Iterate over all Resource Records
 			name := strings.TrimRight(rr.Header().Name, ".")
 			rrtype := rr.Header().Rrtype
 			//ttl := rr.Header().Ttl
 
-			if hostToGet != "" {
-				if strings.Contains(name, hostToGet) {
-					if rrtype == dns.TypeA || rrtype == dns.TypeCNAME {
-						dnsRR[name] = rrtype
+			if rrtype == dns.TypeA || rrtype == dns.TypeCNAME {
+				if hostToGet != "" {
+					if strings.Contains(name, hostToGet) {
+						tempSlice := dnsRR[name]
+						dnsRR[name] = append(tempSlice, rr)
 					}
-				}
-			} else {
-				if rrtype == dns.TypeA || rrtype == dns.TypeCNAME {
-					dnsRR[name] = rrtype
+				} else {
+					tempSlice := dnsRR[name]
+					dnsRR[name] = append(tempSlice, rr)
 				}
 			}
 		}
