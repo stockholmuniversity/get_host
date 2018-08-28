@@ -37,7 +37,6 @@ func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan map
 		for _, rr := range envelope.RR { // Iterate over all Resource Records
 			name := strings.TrimRight(rr.Header().Name, ".")
 			rrtype := rr.Header().Rrtype
-			//ttl := rr.Header().Ttl
 
 			if rrtype == dns.TypeA || rrtype == dns.TypeCNAME {
 				if hostToGet != "" {
