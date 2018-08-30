@@ -83,10 +83,11 @@ func buildDNS(ctx context.Context, verbose bool) map[string][]dns.RR {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "buildDNS")
 	defer span.Finish()
 
-	zones := []string{"***REMOVED***", "***REMOVED***", "***REMOVED***", "db.***REMOVED***"}
+	zones := gethost.Zones()
 	c := make(chan map[string][]dns.RR)
 
-	for _, z := range zones {
+	for _, s := range zones {
+		z := s.Header().Name
 		go gethost.GetRRforZone(ctx, z, "", c, verbose)
 	}
 
