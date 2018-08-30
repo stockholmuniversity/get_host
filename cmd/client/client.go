@@ -76,10 +76,12 @@ func getFromDNS(ctx context.Context, hostToGet string) []string {
 	defer span.Finish()
 
 	dnsRR := map[string][]dns.RR{}
+
+	zones := gethost.Zones()
 	c := make(chan map[string][]dns.RR)
 
-	zones := []string{"***REMOVED***", "***REMOVED***", "***REMOVED***", "db.***REMOVED***"}
-	for _, z := range zones {
+	for _, s := range zones {
+		z := s.Header().Name
 		go gethost.GetRRforZone(ctx, z, hostToGet, c, false)
 	}
 
