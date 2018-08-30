@@ -15,6 +15,18 @@ import (
 	config "github.com/uber/jaeger-client-go/config"
 )
 
+// Zones returns a pointer to an slice with dns.SOA RR type for the zones to ask for
+func Zones() []dns.SOA {
+	var soas = []dns.SOA{}
+	zones := []string{"***REMOVED***", "***REMOVED***", "***REMOVED***", "db.***REMOVED***"}
+	for _, z := range zones {
+		soa := dns.SOA{}
+		soa.Header().Name = z
+		soas = append(soas, soa)
+	}
+	return soas
+}
+
 // GetRRforZone send all CNAME and A records that match 'hostToGet' over channel c.
 // If 'hostToGet' is empty all CNAME and A records for zone z will be returned.
 // This function is well suited to be started in parallel as an go routine.
