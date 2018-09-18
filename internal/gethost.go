@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/miekg/dns"
@@ -40,8 +39,7 @@ func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan map
 	m.SetAxfr(zone)
 	e, err := t.In(m, "***REMOVED***:53")
 	if err != nil {
-		fmt.Println("Got error: ", err)
-		os.Exit(1)
+		log.Println("Got error: ", err)
 	}
 
 	dnsRR := map[string][]dns.RR{}
