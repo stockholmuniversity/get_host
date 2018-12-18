@@ -6,9 +6,9 @@ import (
 	"flag"
 	"fmt"
 	"io"
-    "os"
 	"log"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -20,8 +20,9 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 
+	"github.com/stockholmuniversity/goversionflag"
+
 	"gethost/internal"
-	"suGoVersion"
 )
 
 var dnsRR map[string][]dns.RR
@@ -34,7 +35,7 @@ func main() {
 	port := flag.Int("port", 8080, "Port for server")
 	timeout := flag.Int("ttl", 900, "Cache reload interval in seconds")
 	verbose = flag.Bool("verbose", false, "Print reload and responses to questions to standard out")
-	suGoVersion.PrintVersionAndExit()
+	goversionflag.PrintVersionAndExit()
 
 	var closer io.Closer
 
