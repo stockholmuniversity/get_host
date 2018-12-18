@@ -60,6 +60,7 @@ func printVerbose(output string) {
 func schedUpdate(tracer opentracing.Tracer, timeout int) {
 	log.Printf("Starting scheduled update of cache every %v seconds.\n", timeout)
 	for {
+		printVerbose("Scheduled update in progress.")
 		span := tracer.StartSpan("schedUpdate")
 		ctx := opentracing.ContextWithSpan(context.Background(), span)
 
@@ -92,14 +93,14 @@ func buildDNS(ctx context.Context, verbose bool) map[string][]dns.RR {
 		go gethost.GetRRforZone(ctx, z, "", c, verbose)
 	}
 
-	dnsRR := map[string][]dns.RR{}
+	dnsRRnew := map[string][]dns.RR{}
 	for range zones {
 		m := <-c
 		for k, v := range m {
-			dnsRR[k] = v
+			dnsRRnew[k] = v
 		}
 	}
-	return dnsRR
+	return dnsRRnew
 }
 
 func handleRequests(port int) {
