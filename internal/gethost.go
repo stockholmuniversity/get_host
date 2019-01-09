@@ -14,7 +14,13 @@ import (
 	config "github.com/uber/jaeger-client-go/config"
 )
 
-// Zones returns a pointer to an slice with dns.SOA RR type for the zones to ask for
+// SOAwithRR is an data structure for slected dns.RR and corresponding SOA
+type SOAwithRR struct {
+	SOA *dns.SOA
+	RR  map[string][]dns.RR
+}
+
+// Zones returns a pointer to an slice with dns.SOA RR type for the zones to get AXFR from.
 func Zones() []dns.SOA {
 	var soas = []dns.SOA{}
 	zones := []string{"***REMOVED***", "***REMOVED***", "***REMOVED***", "db.***REMOVED***"}
@@ -29,7 +35,7 @@ func Zones() []dns.SOA {
 // GetRRforZone send all CNAME and A records that match 'hostToGet' over channel c.
 // If 'hostToGet' is empty all CNAME and A records for zone z will be returned.
 // This function is well suited to be started in parallel as an go routine.
-func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan map[string][]dns.RR, verbose bool) {
+func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan SOAwithRR, verbose bool) {
 	span, _ := opentracing.StartSpanFromContext(ctx, "GetRRforZone")
 	span.SetTag("zone", zone)
 	defer span.Finish()
@@ -37,26 +43,32 @@ func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan map
 	t := &dns.Transfer{}
 	m := &dns.Msg{}
 	m.SetAxfr(zone)
+	// TODO DNS query to get NS for su.se
 	e, err := t.In(m, "***REMOVED***:53")
 	if err != nil {
 		log.Println("Got error: ", err)
 	}
 
-	dnsRR := map[string][]dns.RR{}
+	dnsRR := SOAwithRR{}
+	dnsRR.RR = make(map[string][]dns.RR)
 	for envelope := range e { // Range read from channel e
 		for _, rr := range envelope.RR { // Iterate over all Resource Records
 			name := strings.TrimRight(rr.Header().Name, ".")
 			rrtype := rr.Header().Rrtype
 
-			if rrtype == dns.TypeA || rrtype == dns.TypeCNAME {
+			if rrtype == dns.TypeSOA {
+				dnsRR.SOA = rr.(*dns.SOA)
+			}
+
+			if rrtype == dns.TypeA || rrtype == dns.TypeCNAME { // TODO shoud we save AAAA records also?
 				if hostToGet != "" {
 					if strings.Contains(name, hostToGet) {
-						tempSlice := dnsRR[name]
-						dnsRR[name] = append(tempSlice, rr)
+						tempSlice := dnsRR.RR[name]
+						dnsRR.RR[name] = append(tempSlice, rr)
 					}
 				} else {
-					tempSlice := dnsRR[name]
-					dnsRR[name] = append(tempSlice, rr)
+					tempSlice := dnsRR.RR[name]
+					dnsRR.RR[name] = append(tempSlice, rr)
 				}
 			}
 		}

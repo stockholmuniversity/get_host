@@ -86,7 +86,7 @@ func buildDNS(ctx context.Context, verbose bool) map[string][]dns.RR {
 	defer span.Finish()
 
 	zones := gethost.Zones()
-	c := make(chan map[string][]dns.RR)
+	c := make(chan gethost.SOAwithRR)
 
 	for _, s := range zones {
 		z := s.Header().Name
@@ -96,7 +96,7 @@ func buildDNS(ctx context.Context, verbose bool) map[string][]dns.RR {
 	dnsRRnew := map[string][]dns.RR{}
 	for range zones {
 		m := <-c
-		for k, v := range m {
+		for k, v := range m.RR {
 			dnsRRnew[k] = v
 		}
 	}
