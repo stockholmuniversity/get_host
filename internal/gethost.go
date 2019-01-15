@@ -37,18 +37,28 @@ func Zones() []dns.SOA {
 // GetRRforZone send all CNAME and A records that match 'hostToGet' over channel c.
 // If 'hostToGet' is empty all CNAME and A records for zone z will be returned.
 // This function is well suited to be started in parallel as an go routine.
-func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan SOAwithRR, verbose bool) {
-	span, _ := opentracing.StartSpanFromContext(ctx, "GetRRforZone")
+func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan SOAwithRR, verbose bool) (err error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "GetRRforZone")
 	span.SetTag("zone", zone)
 	defer span.Finish()
 
 	t := &dns.Transfer{}
 	m := &dns.Msg{}
 	m.SetAxfr(zone)
-	// TODO DNS query to get NS for su.se
-	e, err := t.In(m, "***REMOVED***:53")
+
+	ns, err := GetNSforZone(ctx, zone)
 	if err != nil {
-		log.Println("Got error: ", err)
+		log.Println("Got error in NS from GetNSforZone:", err)
+	}
+	if verbose == true {
+		fmt.Printf("Name server for zone %s: %s\n", zone, ns)
+	}
+	e, err := t.In(m, ns+":53")
+	if err != nil {
+		if verbose == true {
+			log.Println("Got error: ", err)
+		}
+		return err
 	}
 
 	dnsRR := SOAwithRR{}
@@ -79,6 +89,7 @@ func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan SOA
 	if verbose == true {
 		log.Println("Done writing zone", zone)
 	}
+	return nil
 }
 
 //GetNSforZone returns NameServer for zone by doing NS query to the resolver configured in resolv.conf
