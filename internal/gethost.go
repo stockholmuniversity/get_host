@@ -2,9 +2,11 @@ package gethost
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/miekg/dns"
@@ -77,6 +79,34 @@ func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan SOA
 	if verbose == true {
 		log.Println("Done writing zone", zone)
 	}
+}
+
+//GetNSforZone returns NameServer for zone by doing NS query to the resolver configured in resolv.conf
+func GetNSforZone(ctx context.Context, zone string) (ns string, err error) {
+	span, _ := opentracing.StartSpanFromContext(ctx, "GetNSforZone")
+	span.SetTag("zone", zone)
+	defer span.Finish()
+
+	// Get local resolver
+	conf, err := dns.ClientConfigFromFile("/etc/resolv.conf")
+	if conf == nil {
+		fmt.Printf("Cannot initialize the local resolver: %s\n", err)
+		os.Exit(1)
+	}
+
+	m := new(dns.Msg)
+	m.SetQuestion(zone, dns.TypeNS)
+
+	in, err := dns.Exchange(m, conf.Servers[0]+":"+conf.Port)
+	if err != nil {
+		return "", err
+	}
+	if n, ok := in.Answer[0].(*dns.NS); ok {
+		ns = n.Ns
+	} else {
+		return "", errors.New("Did not get any NS record")
+	}
+	return ns, nil
 }
 
 // JaegerInit initialises jaeger object.

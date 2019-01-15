@@ -22,7 +22,7 @@ import (
 
 	"github.com/stockholmuniversity/goversionflag"
 
-	"gethost/internal"
+	gethost "gethost/internal"
 )
 
 var dnsRR map[string][]dns.RR
