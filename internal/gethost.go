@@ -51,7 +51,7 @@ func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan SOA
 		log.Println("Got error in NS from GetNSforZone:", err)
 	}
 	if verbose == true {
-		fmt.Printf("Name server for zone %s: %s\n", zone, ns)
+		log.Printf("Name server for zone %s: %s\n", zone, ns)
 	}
 	e, err := t.In(m, ns+":53")
 	if err != nil {
