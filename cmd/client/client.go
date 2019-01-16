@@ -19,7 +19,7 @@ import (
 
 	"github.com/stockholmuniversity/goversionflag"
 
-	"gethost/internal"
+	gethost "gethost/internal"
 )
 
 func main() {
@@ -49,6 +49,8 @@ func main() {
 	} else {
 		tracer = opentracing.GlobalTracer()
 	}
+	opentracing.SetGlobalTracer(tracer)
+
 	span := tracer.StartSpan("Get-hosts")
 	defer span.Finish()
 	ctx := opentracing.ContextWithSpan(context.Background(), span)
