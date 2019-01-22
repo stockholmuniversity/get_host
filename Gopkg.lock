@@ -104,7 +104,7 @@
     "ed25519/internal/edwards25519",
   ]
   pruneopts = "UT"
-  revision = "ff983b9c42bc9fbf91556e191cc8efb585c16908"
+  revision = "64072686203f69e3fd20143576b27200f18ab0fa"
 
 [[projects]]
   branch = "master"
@@ -119,15 +119,15 @@
     "ipv6",
   ]
   pruneopts = "UT"
-  revision = "915654e7eabcea33ae277abbecf52f0d8b7a9fdc"
+  revision = "ed066c81e75eba56dd9bd2139ade88125b855585"
 
 [[projects]]
   branch = "master"
-  digest = "1:fe2af5c0e6b4188bb1907e051cd086dae4f7ab3a2f4c1b62c03fefca848ab900"
+  digest = "1:64ec1e1de5cec5e1579df2ff7ac10b20e3bf1cb4393846f631fb204dd9cb44f6"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "a457fd036447854c0c02e89ea439481bdcf941a2"
+  revision = "054c452bb702e465e95ce8e7a3d9a6cf0cd1188d"
 
 [solve-meta]
   analyzer-name = "dep"
