@@ -34,10 +34,16 @@ func Zones() []dns.SOA {
 	return soas
 }
 
+// GetRRforZoneResult is the return struct for GetRRforZone
+type GetRRforZoneResult struct {
+	SOA SOAwithRR
+	Err error
+}
+
 // GetRRforZone send all CNAME and A records that match 'hostToGet' over channel c.
 // If 'hostToGet' is empty all CNAME and A records for zone z will be returned.
 // This function is well suited to be started in parallel as an go routine.
-func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan SOAwithRR, verbose bool) (err error) {
+func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan GetRRforZoneResult, verbose bool) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "GetRRforZone")
 	span.SetTag("zone", zone)
 	defer span.Finish()
@@ -49,6 +55,8 @@ func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan SOA
 	ns, err := GetNSforZone(ctx, zone)
 	if err != nil {
 		log.Println("Got error in NS from GetNSforZone:", err)
+		c <- GetRRforZoneResult{Err: err}
+		return
 	}
 	if verbose == true {
 		log.Printf("Name server for zone %s: %s\n", zone, ns)
@@ -56,9 +64,10 @@ func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan SOA
 	e, err := t.In(m, ns+":53")
 	if err != nil {
 		if verbose == true {
-			log.Println("Got error: ", err)
+			log.Printf("Got error from %s:%s ", ns, err)
 		}
-		return err
+		c <- GetRRforZoneResult{Err: err}
+		return
 	}
 
 	dnsRR := SOAwithRR{}
@@ -85,11 +94,11 @@ func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan SOA
 			}
 		}
 	}
-	c <- dnsRR
+	ret := GetRRforZoneResult{SOA: dnsRR}
+	c <- ret
 	if verbose == true {
 		log.Println("Done writing zone", zone)
 	}
-	return nil
 }
 
 //GetNSforZone returns NameServer for zone by doing NS query to the resolver configured in resolv.conf

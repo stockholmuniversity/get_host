@@ -81,7 +81,7 @@ func getFromDNS(ctx context.Context, hostToGet string) []string {
 	dnsRR := map[string][]dns.RR{}
 
 	zones := gethost.Zones()
-	c := make(chan gethost.SOAwithRR)
+	c := make(chan gethost.GetRRforZoneResult)
 
 	for _, s := range zones {
 		z := s.Header().Name
@@ -90,7 +90,7 @@ func getFromDNS(ctx context.Context, hostToGet string) []string {
 
 	for range zones {
 		m := <-c
-		for k, v := range m.RR {
+		for k, v := range m.SOA.RR {
 			dnsRR[k] = v
 		}
 	}

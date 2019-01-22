@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -74,19 +75,24 @@ func updateDNS(ctx context.Context) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "updateDNS")
 	defer span.Finish()
 
-	dnsRRnew := buildDNS(ctx, *verbose)
+	dnsRRnew, err := buildDNS(ctx, *verbose)
+	if err != nil {
+		log.Printf("Could not build DNS; %s", err)
+		return
+	}
 	mtx.Lock()
 	dnsRR = dnsRRnew
 	mtx.Unlock()
 
 }
 
-func buildDNS(ctx context.Context, verbose bool) map[string][]dns.RR {
+func buildDNS(ctx context.Context, verbose bool) (map[string][]dns.RR, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "buildDNS")
 	defer span.Finish()
+	var gotErr error
 
 	zones := gethost.Zones()
-	c := make(chan gethost.SOAwithRR)
+	c := make(chan gethost.GetRRforZoneResult)
 
 	for _, s := range zones {
 		z := s.Header().Name
@@ -96,11 +102,17 @@ func buildDNS(ctx context.Context, verbose bool) map[string][]dns.RR {
 	dnsRRnew := map[string][]dns.RR{}
 	for range zones {
 		m := <-c
-		for k, v := range m.RR {
+		if m.Err != nil {
+			gotErr = m.Err
+		}
+		for k, v := range m.SOA.RR {
 			dnsRRnew[k] = v
 		}
 	}
-	return dnsRRnew
+	if gotErr != nil {
+		return nil, errors.New("Could not build cache, at least one error: ")
+	}
+	return dnsRRnew, nil
 }
 
 func handleRequests(port int) {
