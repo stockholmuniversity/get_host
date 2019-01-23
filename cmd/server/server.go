@@ -89,7 +89,7 @@ func updateDNS(ctx context.Context) {
 func buildDNS(ctx context.Context, verbose bool) (map[string][]dns.RR, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "buildDNS")
 	defer span.Finish()
-	var gotErr error
+	var gotErr []error
 
 	zones := gethost.Zones()
 	c := make(chan gethost.GetRRforZoneResult)
@@ -103,14 +103,18 @@ func buildDNS(ctx context.Context, verbose bool) (map[string][]dns.RR, error) {
 	for range zones {
 		m := <-c
 		if m.Err != nil {
-			gotErr = m.Err
+			gotErr = append(gotErr, m.Err)
 		}
 		for k, v := range m.SOA.RR {
 			dnsRRnew[k] = v
 		}
 	}
 	if gotErr != nil {
-		return nil, errors.New("Could not build cache, at least one error: ")
+		var ret string
+		for _, v := range gotErr {
+			ret = ret + " " + v.Error()
+		}
+		return nil, errors.New("Could not build cache, at least one error: " + ret)
 	}
 	return dnsRRnew, nil
 }
