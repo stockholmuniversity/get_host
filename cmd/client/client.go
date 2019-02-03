@@ -27,7 +27,10 @@ func main() {
 	useTracing := flag.Bool("tracing", false, "Enable tracing of calls.")
 	useNC := flag.Bool("nc", false, "No Cache. Force reload of cache")
 	getAllHosts := flag.Bool("a", false, "Get all hosts")
+	configFile := flag.String("configfile", "", "Configuation file")
 	goversionflag.PrintVersionAndExit()
+
+	config := gethost.NewConfig(configFile)
 
 	var hostToGet string
 	flagsLeftover := flag.Args()
@@ -65,7 +68,7 @@ func main() {
 	}
 	// No match from server, do lookup ourself
 	if r == nil {
-		r = getFromDNS(ctx, hostToGet)
+		r = getFromDNS(ctx, hostToGet, config)
 	}
 
 	for _, i := range r {
@@ -74,13 +77,13 @@ func main() {
 
 }
 
-func getFromDNS(ctx context.Context, hostToGet string) []string {
+func getFromDNS(ctx context.Context, hostToGet string, config *gethost.Config) []string {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "getFromDNS")
 	defer span.Finish()
 
 	dnsRR := map[string][]dns.RR{}
 
-	zones := gethost.Zones()
+	zones := gethost.Zones(config)
 	c := make(chan gethost.GetRRforZoneResult)
 
 	for _, s := range zones {

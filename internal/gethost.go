@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/miekg/dns"
+	"github.com/BurntSushi/toml"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	jaeger "github.com/uber/jaeger-client-go"
@@ -22,11 +23,39 @@ type SOAwithRR struct {
 	RR  map[string][]dns.RR
 }
 
+// Config should be populated from an TOML configuration file. Se example.toml in root of this repo.
+type Config struct {
+    Zones []string
+    NS string // TODO may be able to use nameserver from configfile
+    Resolver string // TODO may be able to use resolver from configfile
+    TTL int // Timeout in seconds
+    ServerPort int // Port for server to bind to
+    Tracing bool // Use jaeger tracing
+}
+
+// NewConfig returns default configuration with consideration to configuration file.
+func NewConfig(configFile *string) *Config {
+config := &Config{
+    TTL: 900,
+    ServerPort: 8080,
+    Tracing: false,
+}
+        if _, err := toml.DecodeFile(*configFile, config); err != nil {
+                        log.Fatalf("toml decoding failed: %s", err)
+                                }
+return config
+}
+
 // Zones returns a pointer to an slice with dns.SOA RR type for the zones to get AXFR from.
-func Zones() []dns.SOA {
+func Zones(config *Config) []dns.SOA {
 	var soas = []dns.SOA{}
-	zones := []string{"***REMOVED***", "***REMOVED***", "***REMOVED***", "db.***REMOVED***"}
+    zones := config.Zones
 	for _, z := range zones {
+		isFqdn := dns.IsFqdn(z)
+		if isFqdn == false {
+			fmt.Println("zone " + z + " Is not fully qualified. Maybe missing tailing '.'?")
+            os.Exit(0)
+		}
 		soa := dns.SOA{}
 		soa.Header().Name = z
 		soas = append(soas, soa)

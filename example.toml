@@ -1,0 +1,14 @@
+# This is a sample configuration file. Defaults are listed,
+# only change that are required is what zones to cache.
+
+
+## Zones is required to be set to the zones to cache.
+## These server/client must be able to do AXFR for the zones.
+Zones = [ "zon1.example.tld", "zone2.example.tld" ]
+
+# TODO: Not implemented yet
+# NS
+# Resolver
+# TTL = 900
+# ServerPort = 8080
+# Tracing = false

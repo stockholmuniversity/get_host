@@ -32,15 +32,14 @@ var tracer opentracing.Tracer
 var verbose *bool
 
 func main() {
-	useTracing := flag.Bool("tracing", false, "Enable tracing of calls.")
-	port := flag.Int("port", 8080, "Port for server")
-	timeout := flag.Int("ttl", 900, "Cache reload interval in seconds")
 	verbose = flag.Bool("verbose", false, "Print reload and responses to questions to standard out")
+	configFile := flag.String("configfile", "", "Configuation file")
 	goversionflag.PrintVersionAndExit()
 
+	config := gethost.NewConfig(configFile)
 	var closer io.Closer
 
-	if *useTracing == true {
+	if config.Tracing == true {
 		tracer, closer = gethost.JaegerInit("gethost-server")
 		defer closer.Close()
 	} else {
@@ -48,8 +47,8 @@ func main() {
 	}
 	opentracing.SetGlobalTracer(tracer)
 
-	go schedUpdate(tracer, *timeout)
-	handleRequests(*port)
+	go schedUpdate(tracer, config)
+	handleRequests(config)
 }
 
 func printVerbose(output string) {
@@ -58,24 +57,24 @@ func printVerbose(output string) {
 	}
 }
 
-func schedUpdate(tracer opentracing.Tracer, timeout int) {
-	log.Printf("Starting scheduled update of cache every %v seconds.\n", timeout)
+func schedUpdate(tracer opentracing.Tracer, config *gethost.Config) {
+	log.Printf("Starting scheduled update of cache every %v seconds.\n", config.TTL)
 	for {
 		printVerbose("Scheduled update in progress.")
 		span := tracer.StartSpan("schedUpdate")
 		ctx := opentracing.ContextWithSpan(context.Background(), span)
 
-		updateDNS(ctx)
+		updateDNS(ctx, config)
 		span.Finish()
-		time.Sleep(time.Duration(timeout) * time.Second)
+		time.Sleep(time.Duration(config.TTL) * time.Second)
 	}
 }
 
-func updateDNS(ctx context.Context) {
+func updateDNS(ctx context.Context, config *gethost.Config) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "updateDNS")
 	defer span.Finish()
 
-	dnsRRnew, err := buildDNS(ctx, *verbose)
+	dnsRRnew, err := buildDNS(ctx, *verbose, config)
 	if err != nil {
 		log.Printf("Could not build DNS; %s", err)
 		return
@@ -86,12 +85,12 @@ func updateDNS(ctx context.Context) {
 
 }
 
-func buildDNS(ctx context.Context, verbose bool) (map[string][]dns.RR, error) {
+func buildDNS(ctx context.Context, verbose bool, config *gethost.Config) (map[string][]dns.RR, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "buildDNS")
 	defer span.Finish()
 	var gotErr []error
 
-	zones := gethost.Zones()
+	zones := gethost.Zones(config)
 	c := make(chan gethost.GetRRforZoneResult)
 
 	for _, s := range zones {
@@ -119,16 +118,22 @@ func buildDNS(ctx context.Context, verbose bool) (map[string][]dns.RR, error) {
 	return dnsRRnew, nil
 }
 
-func handleRequests(port int) {
+func handleRequests(config *gethost.Config) {
 	myRouter := mux.NewRouter().StrictSlash(true)
-	myRouter.HandleFunc("/{id}", httpResponse)
-	myRouter.HandleFunc("/{id}/{nc}", httpResponse)
-	addr := ":" + strconv.Itoa(port)
+	myRouter.HandleFunc("/{id}", wrapper(config, httpResponse))
+	myRouter.HandleFunc("/{id}/{nc}", wrapper(config, httpResponse))
+	addr := ":" + strconv.Itoa(config.ServerPort)
 	log.Println("Staring server on", addr)
 	log.Fatal(http.ListenAndServe(addr, myRouter))
 }
 
-func httpResponse(w http.ResponseWriter, r *http.Request) {
+func wrapper(config *gethost.Config, handler func(w http.ResponseWriter, r *http.Request, config *gethost.Config)) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		handler(w, r, config)
+	}
+}
+
+func httpResponse(w http.ResponseWriter, r *http.Request, config *gethost.Config) {
 	spanCtx, _ := tracer.Extract(opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(r.Header))
 	span := tracer.StartSpan("httpResponse", ext.RPCServerOption(spanCtx))
 	ctx := opentracing.ContextWithSpan(context.Background(), span)
@@ -140,7 +145,7 @@ func httpResponse(w http.ResponseWriter, r *http.Request) {
 
 	if noCache == "nc" {
 		log.Println("got nc flag")
-		updateDNS(ctx)
+		updateDNS(ctx, config)
 	}
 
 	hostnames := []string{}
