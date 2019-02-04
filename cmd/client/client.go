@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/miekg/dns"
@@ -62,7 +63,7 @@ func main() {
 	if *useNC == true {
 		hostToGet = hostToGet + "/nc"
 	}
-	r, err := getFromServer(ctx, hostToGet)
+	r, err := getFromServer(ctx, hostToGet, config)
 	if err != nil {
 		log.Println(err)
 	}
@@ -108,11 +109,11 @@ func getFromDNS(ctx context.Context, hostToGet string, config *gethost.Config) [
 
 }
 
-func getFromServer(ctx context.Context, hostToGet string) ([]string, error) {
+func getFromServer(ctx context.Context, hostToGet string, config *gethost.Config) ([]string, error) {
 	span, _ := opentracing.StartSpanFromContext(ctx, "getFromServer")
 	defer span.Finish()
 
-	url := "http://localhost:8080/" + hostToGet
+	url := config.ServerURL + ":" + strconv.Itoa(config.ServerPort) + "/" + hostToGet
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		panic(err.Error())

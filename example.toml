@@ -2,13 +2,24 @@
 # only change that are required is what zones to cache.
 
 
-## Zones is required to be set to the zones to cache.
-## These server/client must be able to do AXFR for the zones.
+# Server: This setting is required to be set in the configuration file
+# Client: Only need to be set if used without server
+# These server/client must be able to do AXFR for the zones.
 Zones = [ "zon1.example.tld", "zone2.example.tld" ]
+
+# Server: The port the server tries to bind to
+# Client: The port to connect to
+# ServerPort = 8080
+
+# Client: url to connect to server
+# Defaults to that the server is running on localhost
+# ServerURL = "http://localhost"
+
+# Server: Time To Live, how often the server will try to update its cache.
+# TTL = 900
+
 
 # TODO: Not implemented yet
 # NS
 # Resolver
-# TTL = 900
-# ServerPort = 8080
 # Tracing = false
