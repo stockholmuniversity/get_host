@@ -129,8 +129,8 @@ func buildDNS(ctx context.Context, config *gethost.Config) (map[string][]dns.RR,
 
 func handleRequests(config *gethost.Config) {
 	myRouter := mux.NewRouter().StrictSlash(true)
-	myRouter.HandleFunc("/{id}", wrapper(config, httpResponse))
-	myRouter.HandleFunc("/{id}/{nc}", wrapper(config, httpResponse))
+	myRouter.HandleFunc("/hosts/{id}", wrapper(config, httpResponse))
+	myRouter.HandleFunc("/hosts/{id}/{nc}", wrapper(config, httpResponse))
 	addr := ":" + strconv.Itoa(config.ServerPort)
 	log.Println("Staring server on", addr)
 	log.Fatal(http.ListenAndServe(addr, myRouter))

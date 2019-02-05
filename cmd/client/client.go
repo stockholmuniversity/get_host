@@ -121,7 +121,7 @@ func getFromServer(ctx context.Context, hostToGet string, config *gethost.Config
 	span, _ := opentracing.StartSpanFromContext(ctx, "getFromServer")
 	defer span.Finish()
 
-	url := config.ServerURL + ":" + strconv.Itoa(config.ServerPort) + "/" + hostToGet
+	url := config.ServerURL + ":" + strconv.Itoa(config.ServerPort) + "/hosts/" + hostToGet
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		panic(err.Error())
