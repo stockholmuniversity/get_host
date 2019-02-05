@@ -31,6 +31,10 @@ func main() {
 	configFile := flag.String("configfile", "", "Configuation file")
 	goversionflag.PrintVersionAndExit()
 
+	if *configFile == "" {
+		log.Fatalln("Need configuration file.")
+	}
+
 	config, err := gethost.NewConfig(configFile)
 	if err != nil {
 		log.Println("Got error when parsing configuration file: " + err.Error())
