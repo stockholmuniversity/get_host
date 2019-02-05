@@ -36,8 +36,17 @@ func main() {
 	configFile := flag.String("configfile", "", "Configuation file")
 	goversionflag.PrintVersionAndExit()
 
-	config := gethost.NewConfig(configFile)
+	config, err := gethost.NewConfig(configFile)
+	if err != nil {
+		log.Println("Got error when parsing configuration file: " + err.Error())
+		os.Exit(1)
+	}
+
 	var closer io.Closer
+
+	if *verbose == true {
+		config.Verbose = true
+	}
 
 	if config.Tracing == true {
 		tracer, closer = gethost.JaegerInit("gethost-server")
@@ -51,16 +60,12 @@ func main() {
 	handleRequests(config)
 }
 
-func printVerbose(output string) {
-	if *verbose == true {
-		log.Println(output)
-	}
-}
-
 func schedUpdate(tracer opentracing.Tracer, config *gethost.Config) {
 	log.Printf("Starting scheduled update of cache every %v seconds.\n", config.TTL)
 	for {
-		printVerbose("Scheduled update in progress.")
+		if config.Verbose == true {
+			log.Println("Scheduled update in progress.")
+		}
 		span := tracer.StartSpan("schedUpdate")
 		ctx := opentracing.ContextWithSpan(context.Background(), span)
 
@@ -74,7 +79,7 @@ func updateDNS(ctx context.Context, config *gethost.Config) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "updateDNS")
 	defer span.Finish()
 
-	dnsRRnew, err := buildDNS(ctx, *verbose, config)
+	dnsRRnew, err := buildDNS(ctx, config)
 	if err != nil {
 		log.Printf("Could not build DNS; %s", err)
 		return
@@ -85,7 +90,7 @@ func updateDNS(ctx context.Context, config *gethost.Config) {
 
 }
 
-func buildDNS(ctx context.Context, verbose bool, config *gethost.Config) (map[string][]dns.RR, error) {
+func buildDNS(ctx context.Context, config *gethost.Config) (map[string][]dns.RR, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "buildDNS")
 	defer span.Finish()
 	var gotErr []error
@@ -95,7 +100,7 @@ func buildDNS(ctx context.Context, verbose bool, config *gethost.Config) (map[st
 
 	for _, s := range zones {
 		z := s.Header().Name
-		go gethost.GetRRforZone(ctx, z, "", c, verbose)
+		go gethost.GetRRforZone(ctx, z, "", c, config)
 	}
 
 	dnsRRnew := map[string][]dns.RR{}
@@ -165,6 +170,8 @@ func httpResponse(w http.ResponseWriter, r *http.Request, config *gethost.Config
 		os.Exit(1)
 	}
 
-	printVerbose("Send match for " + hostToGet + ": " + string(j))
+	if config.Verbose == true {
+		log.Println("Send match for " + hostToGet + ": " + string(j))
+	}
 	fmt.Fprintf(w, string(j))
 }

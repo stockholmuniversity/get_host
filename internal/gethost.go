@@ -32,10 +32,11 @@ type Config struct {
 	ServerPort int    // Port for server to bind to
 	ServerURL  string // Url to server, used by client
 	Tracing    bool   // Use jaeger tracing
+	Verbose    bool   // Print more verbose information
 }
 
 // NewConfig returns default configuration with consideration to configuration file.
-func NewConfig(configFile *string) *Config {
+func NewConfig(configFile *string) (*Config, error) {
 	config := &Config{
 		TTL:        900,
 		ServerPort: 8080,
@@ -43,9 +44,9 @@ func NewConfig(configFile *string) *Config {
 		Tracing:    false,
 	}
 	if _, err := toml.DecodeFile(*configFile, config); err != nil {
-		log.Fatalf("toml decoding failed: %s", err)
+		return nil, errors.New("toml decoding failed: " + err.Error())
 	}
-	return config
+	return config, nil
 }
 
 // Zones returns a pointer to an slice with dns.SOA RR type for the zones to get AXFR from.
@@ -74,7 +75,7 @@ type GetRRforZoneResult struct {
 // GetRRforZone send all CNAME and A records that match 'hostToGet' over channel c.
 // If 'hostToGet' is empty all CNAME and A records for zone z will be returned.
 // This function is well suited to be started in parallel as an go routine.
-func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan GetRRforZoneResult, verbose bool) {
+func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan GetRRforZoneResult, config *Config) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "GetRRforZone")
 	span.SetTag("zone", zone)
 	defer span.Finish()
@@ -85,17 +86,17 @@ func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan Get
 
 	ns, err := GetNSforZone(ctx, zone)
 	if err != nil {
-		log.Println("Got error in NS from GetNSforZone:", err)
+		log.Println("GetRRforZone: Got error in NS from GetNSforZone:", err)
 		c <- GetRRforZoneResult{Err: err}
 		return
 	}
-	if verbose == true {
+	if config.Verbose == true {
 		log.Printf("Name server for zone %s: %s\n", zone, ns)
 	}
 	e, err := t.In(m, ns+":53")
 	if err != nil {
-		if verbose == true {
-			log.Printf("Got error from %s:%s ", ns, err)
+		if config.Verbose == true {
+			log.Printf("GetRRforZone: Got error from %s:%s ", ns, err)
 		}
 		c <- GetRRforZoneResult{Err: err}
 		return
@@ -127,7 +128,7 @@ func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan Get
 	}
 	ret := GetRRforZoneResult{SOA: dnsRR}
 	c <- ret
-	if verbose == true {
+	if config.Verbose == true {
 		log.Println("Done writing zone", zone)
 	}
 }

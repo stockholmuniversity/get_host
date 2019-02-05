@@ -18,8 +18,14 @@ Zones = [ "zon1.example.tld", "zone2.example.tld" ]
 # Server: Time To Live, how often the server will try to update its cache.
 # TTL = 900
 
+# Server: Enable opentracing
+# Client: Enable opentracing
+# Tracing = false
+
+# Server: More verbose information
+# Client: More verbose information
+# Verbose = false
 
 # TODO: Not implemented yet
 # NS
 # Resolver
-# Tracing = false

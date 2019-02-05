@@ -31,7 +31,11 @@ func main() {
 	configFile := flag.String("configfile", "", "Configuation file")
 	goversionflag.PrintVersionAndExit()
 
-	config := gethost.NewConfig(configFile)
+	config, err := gethost.NewConfig(configFile)
+	if err != nil {
+		log.Println("Got error when parsing configuration file: " + err.Error())
+		os.Exit(1)
+	}
 
 	var hostToGet string
 	flagsLeftover := flag.Args()
@@ -89,7 +93,7 @@ func getFromDNS(ctx context.Context, hostToGet string, config *gethost.Config) [
 
 	for _, s := range zones {
 		z := s.Header().Name
-		go gethost.GetRRforZone(ctx, z, hostToGet, c, false)
+		go gethost.GetRRforZone(ctx, z, hostToGet, c, config)
 	}
 
 	for range zones {
