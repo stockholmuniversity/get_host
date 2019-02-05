@@ -11,11 +11,13 @@ Zones = [ "zon1.example.tld", "zone2.example.tld" ]
 # Client: The port to connect to
 # ServerPort = 8080
 
-# Client: url to connect to server
+# Server: Unused
+# Client: URL to connect to server
 # Defaults to that the server is running on localhost
 # ServerURL = "http://localhost"
 
 # Server: Time To Live, how often the server will try to update its cache.
+# Client: Unused
 # TTL = 900
 
 # Server: Enable opentracing
@@ -26,6 +28,6 @@ Zones = [ "zon1.example.tld", "zone2.example.tld" ]
 # Client: More verbose information
 # Verbose = false
 
-# TODO: Not implemented yet
-# NS
-# Resolver
+# Server: Use this server for all AXFR instead of lookup NS for each zone
+# Client: Use this server for all AXFR instead of lookup NS for each zone
+# NS = ""

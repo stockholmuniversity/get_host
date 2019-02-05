@@ -84,7 +84,13 @@ func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan Get
 	m := &dns.Msg{}
 	m.SetAxfr(zone)
 
-	ns, err := GetNSforZone(ctx, zone)
+	var ns string
+	var err error
+	if config.NS != "" {
+		ns = config.NS
+	} else {
+		ns, err = GetNSforZone(ctx, zone)
+	}
 	if err != nil {
 		log.Println("GetRRforZone: Got error in NS from GetNSforZone:", err)
 		c <- GetRRforZoneResult{Err: err}
