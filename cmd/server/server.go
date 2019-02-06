@@ -131,6 +131,7 @@ func handleRequests(config *gethost.Config) {
 	myRouter := mux.NewRouter().StrictSlash(true)
 	myRouter.HandleFunc("/hosts/{id}", wrapper(config, httpResponse))
 	myRouter.HandleFunc("/hosts/{id}/{nc}", wrapper(config, httpResponse))
+	myRouter.HandleFunc("/version", httpVersion)
 	addr := ":" + strconv.Itoa(config.ServerPort)
 	log.Println("Staring server on", addr)
 	log.Fatal(http.ListenAndServe(addr, myRouter))
@@ -178,4 +179,27 @@ func httpResponse(w http.ResponseWriter, r *http.Request, config *gethost.Config
 		log.Println("Send match for " + hostToGet + ": " + string(j))
 	}
 	fmt.Fprintf(w, string(j))
+}
+
+func httpVersion(w http.ResponseWriter, r *http.Request) {
+	buildversion := goversionflag.GetBuildInformation()
+	buildSlice := []string{}
+	missingBuildInfo := false
+	for k, v := range buildversion {
+		buildSlice = append(buildSlice, k+": "+v+"\n")
+		if v == "" {
+			missingBuildInfo = true
+		}
+	}
+	sort.Strings(buildSlice)
+	for _, v := range buildSlice {
+		fmt.Fprintf(w, v)
+	}
+	if missingBuildInfo {
+		fmt.Fprintf(w, `Do not have complete buildinfo, see documentaion:
+https://github.com/stockholmuniversity/goversionflag
+https://godoc.org/github.com/stockholmuniversity/goversionflag
+`)
+	}
+
 }
