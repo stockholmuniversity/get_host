@@ -101,6 +101,7 @@ func buildDNS(ctx context.Context, config *gethost.Config) (map[string][]dns.RR,
 
 	zones := gethost.Zones(config)
 	c := make(chan gethost.GetRRforZoneResult)
+	defer close(c)
 
 	for _, s := range zones {
 		z := s.Header().Name
