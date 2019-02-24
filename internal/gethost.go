@@ -17,7 +17,7 @@ import (
 	config "github.com/uber/jaeger-client-go/config"
 )
 
-// SOAwithRR is an data structure for slected dns.RR and corresponding SOA
+// SOAwithRR is an data structure for selected dns.RR and corresponding SOA
 type SOAwithRR struct {
 	SOA *dns.SOA
 	RR  map[string][]dns.RR
@@ -119,7 +119,7 @@ func GetRRforZone(ctx context.Context, zone string, hostToGet string, c chan Get
 				dnsRR.SOA = rr.(*dns.SOA)
 			}
 
-			if rrtype == dns.TypeA || rrtype == dns.TypeCNAME { // TODO shoud we save AAAA records also?
+			if rrtype == dns.TypeA || rrtype == dns.TypeCNAME { // TODO should we save AAAA records also?
 				if hostToGet != "" {
 					if strings.Contains(name, hostToGet) {
 						tempSlice := dnsRR.RR[name]
