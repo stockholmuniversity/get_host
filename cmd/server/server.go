@@ -133,6 +133,7 @@ func handleRequests(config *gethost.Config) {
 	myRouter.HandleFunc("/hosts/{id}", wrapper(config, httpResponse))
 	myRouter.HandleFunc("/hosts/{id}/{nc}", wrapper(config, httpResponse))
 	myRouter.HandleFunc("/version", httpVersion)
+	myRouter.HandleFunc("/status", wrapper(config, httpStatus))
 	addr := ":" + strconv.Itoa(config.ServerPort)
 	log.Println("Staring server on", addr)
 	log.Fatal(http.ListenAndServe(addr, myRouter))
@@ -202,5 +203,22 @@ https://github.com/stockholmuniversity/goversionflag
 https://godoc.org/github.com/stockholmuniversity/goversionflag
 `)
 	}
+
+}
+
+func httpStatus(w http.ResponseWriter, r *http.Request, config *gethost.Config) {
+	spanCtx, _ := tracer.Extract(opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(r.Header))
+	span := tracer.StartSpan("httpStatus", ext.RPCServerOption(spanCtx))
+	defer span.Finish()
+
+	fmt.Fprintf(w, "Zones cached:\n")
+	zones := gethost.Zones(config)
+	for _, s := range zones {
+		z := s.Header().Name
+		fmt.Fprintf(w, "%s\n", z)
+	}
+
+	l := len(dnsRR)
+	fmt.Fprintf(w, "Cache size: %d\n", l)
 
 }
