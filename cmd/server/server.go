@@ -26,8 +26,25 @@ import (
 	gethost "gethost/internal"
 )
 
-var dnsRR map[string][]dns.RR
-var mtx sync.RWMutex
+type cache struct {
+	data map[string][]dns.RR
+	sync.RWMutex
+	age time.Time
+}
+
+func (c cache) Age() time.Duration {
+	t := time.Since(c.age)
+	return t.Truncate(time.Second)
+}
+
+func (c *cache) Len() int {
+	c.RLock()
+	n := len(c.data)
+	c.RUnlock()
+	return n
+}
+
+var dnsRR cache
 var tracer opentracing.Tracer
 var verbose *bool
 var startTime time.Time
@@ -88,14 +105,15 @@ func updateDNS(ctx context.Context, config *gethost.Config) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "updateDNS")
 	defer span.Finish()
 
-	dnsRRnew, err := buildDNS(ctx, config)
+	dnsRRdataNew, err := buildDNS(ctx, config)
 	if err != nil {
 		log.Printf("Could not build DNS; %s", err)
 		return
 	}
-	mtx.Lock()
-	dnsRR = dnsRRnew
-	mtx.Unlock()
+	dnsRR.Lock()
+	dnsRR.data = dnsRRdataNew
+	dnsRR.age = time.Now()
+	dnsRR.Unlock()
 
 }
 
@@ -113,14 +131,14 @@ func buildDNS(ctx context.Context, config *gethost.Config) (map[string][]dns.RR,
 		go gethost.GetRRforZone(ctx, z, "", c, config)
 	}
 
-	dnsRRnew := map[string][]dns.RR{}
+	dnsRRdataNew := map[string][]dns.RR{}
 	for range zones {
 		m := <-c
 		if m.Err != nil {
 			gotErr = append(gotErr, m.Err)
 		}
 		for k, v := range m.SOA.RR {
-			dnsRRnew[k] = v
+			dnsRRdataNew[k] = v
 		}
 	}
 	if gotErr != nil {
@@ -130,7 +148,7 @@ func buildDNS(ctx context.Context, config *gethost.Config) (map[string][]dns.RR,
 		}
 		return nil, errors.New("Could not build cache, at least one error: " + ret)
 	}
-	return dnsRRnew, nil
+	return dnsRRdataNew, nil
 }
 
 func handleRequests(config *gethost.Config) {
@@ -167,13 +185,13 @@ func httpResponse(w http.ResponseWriter, r *http.Request, config *gethost.Config
 
 	hostnames := []string{}
 
-	mtx.RLock()
-	for hostname := range dnsRR {
+	dnsRR.RLock()
+	for hostname := range dnsRR.data { // TODO, method on cache struct?
 		if strings.Contains(hostname, hostToGet) {
 			hostnames = append(hostnames, hostname)
 		}
 	}
-	mtx.RUnlock()
+	dnsRR.RUnlock()
 	sort.Strings(hostnames)
 
 	j, err := json.Marshal(hostnames)
@@ -223,11 +241,11 @@ func httpStatus(w http.ResponseWriter, r *http.Request, config *gethost.Config) 
 		fmt.Fprintf(w, "%s\n", z)
 	}
 
-	mtx.RLock()
-	l := len(dnsRR)
-	mtx.RUnlock()
-	fmt.Fprintf(w, "Cache size: %d\n", l)
+	dnsRR.RLock()
+	fmt.Fprintf(w, "Cache size: %d\n", dnsRR.Len())
+	fmt.Fprintf(w, "Cache age: %s\n", dnsRR.Age())
 	fmt.Fprintf(w, "Uptime: %s\n", uptime())
+	dnsRR.RUnlock()
 
 }
 
