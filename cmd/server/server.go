@@ -141,10 +141,11 @@ func buildDNS(ctx context.Context, config *gethost.Config) (map[string][]dns.RR,
 		m := <-c
 		if m.Err != nil {
 			gotErr = append(gotErr, m.Err)
-		}
-		soas = append(soas, *m.SOA.SOA)
-		for k, v := range m.SOA.RR {
-			dnsRRdataNew[k] = v
+		} else {
+			soas = append(soas, *m.SOA.SOA)
+			for k, v := range m.SOA.RR {
+				dnsRRdataNew[k] = v
+			}
 		}
 	}
 	if gotErr != nil {
