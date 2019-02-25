@@ -28,6 +28,7 @@ import (
 
 type cache struct {
 	data map[string][]dns.RR
+	soas []dns.SOA
 	sync.RWMutex
 	age time.Time
 }
@@ -105,7 +106,7 @@ func updateDNS(ctx context.Context, config *gethost.Config) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "updateDNS")
 	defer span.Finish()
 
-	dnsRRdataNew, err := buildDNS(ctx, config)
+	dnsRRdataNew, soas, err := buildDNS(ctx, config)
 	if err != nil {
 		log.Printf("Could not build DNS; %s", err)
 		return
@@ -113,14 +114,18 @@ func updateDNS(ctx context.Context, config *gethost.Config) {
 	dnsRR.Lock()
 	dnsRR.data = dnsRRdataNew
 	dnsRR.age = time.Now()
+	dnsRR.soas = soas
 	dnsRR.Unlock()
 
 }
 
-func buildDNS(ctx context.Context, config *gethost.Config) (map[string][]dns.RR, error) {
+func buildDNS(ctx context.Context, config *gethost.Config) (map[string][]dns.RR, []dns.SOA, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "buildDNS")
 	defer span.Finish()
-	var gotErr []error
+	var (
+		gotErr []error
+		soas   []dns.SOA
+	)
 
 	zones := gethost.Zones(config)
 	c := make(chan gethost.GetRRforZoneResult)
@@ -137,6 +142,7 @@ func buildDNS(ctx context.Context, config *gethost.Config) (map[string][]dns.RR,
 		if m.Err != nil {
 			gotErr = append(gotErr, m.Err)
 		}
+		soas = append(soas, *m.SOA.SOA)
 		for k, v := range m.SOA.RR {
 			dnsRRdataNew[k] = v
 		}
@@ -146,9 +152,9 @@ func buildDNS(ctx context.Context, config *gethost.Config) (map[string][]dns.RR,
 		for _, v := range gotErr {
 			ret = ret + " " + v.Error()
 		}
-		return nil, errors.New("Could not build cache, at least one error: " + ret)
+		return nil, nil, errors.New("Could not build cache, at least one error: " + ret)
 	}
-	return dnsRRdataNew, nil
+	return dnsRRdataNew, soas, nil
 }
 
 func handleRequests(config *gethost.Config) {
@@ -234,14 +240,14 @@ func httpStatus(w http.ResponseWriter, r *http.Request, config *gethost.Config) 
 	span := tracer.StartSpan("httpStatus", ext.RPCServerOption(spanCtx))
 	defer span.Finish()
 
+	dnsRR.RLock()
 	fmt.Fprintf(w, "Zones cached:\n")
-	zones := gethost.Zones(config)
-	for _, s := range zones {
+	for _, s := range dnsRR.soas {
 		z := s.Header().Name
-		fmt.Fprintf(w, "%s\n", z)
+		serial := s.Serial
+		fmt.Fprintf(w, "%s serial: %d\n", z, serial)
 	}
 
-	dnsRR.RLock()
 	fmt.Fprintf(w, "Cache size: %d\n", dnsRR.Len())
 	fmt.Fprintf(w, "Cache age: %s\n", dnsRR.Age())
 	fmt.Fprintf(w, "Uptime: %s\n", uptime())
