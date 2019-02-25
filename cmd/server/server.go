@@ -30,6 +30,11 @@ var dnsRR map[string][]dns.RR
 var mtx sync.RWMutex
 var tracer opentracing.Tracer
 var verbose *bool
+var startTime time.Time
+
+func init() {
+	startTime = time.Now()
+}
 
 func main() {
 	verbose = flag.Bool("verbose", false, "Print reload and responses to questions to standard out")
@@ -218,7 +223,15 @@ func httpStatus(w http.ResponseWriter, r *http.Request, config *gethost.Config) 
 		fmt.Fprintf(w, "%s\n", z)
 	}
 
+	mtx.RLock()
 	l := len(dnsRR)
+	mtx.RUnlock()
 	fmt.Fprintf(w, "Cache size: %d\n", l)
+	fmt.Fprintf(w, "Uptime: %s\n", uptime())
 
+}
+
+func uptime() time.Duration {
+	t := time.Since(startTime)
+	return t.Truncate(time.Second)
 }
