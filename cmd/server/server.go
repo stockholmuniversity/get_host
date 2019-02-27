@@ -34,7 +34,9 @@ type cache struct {
 }
 
 func (c cache) Age() time.Duration {
+	c.RLock()
 	t := time.Since(c.age)
+	c.RUnlock()
 	return t.Truncate(time.Second)
 }
 
@@ -241,19 +243,37 @@ func httpStatus(w http.ResponseWriter, r *http.Request, config *gethost.Config) 
 	span := tracer.StartSpan("httpStatus", ext.RPCServerOption(spanCtx))
 	defer span.Finish()
 
-	dnsRR.RLock()
-	fmt.Fprintf(w, "Zones cached:\n")
-	for _, s := range dnsRR.soas {
-		z := s.Header().Name
-		serial := s.Serial
-		fmt.Fprintf(w, "%s serial: %d\n", z, serial)
+	type zoneSerial struct {
+		cache  int    // TODO: Not yet implemented
+		Serial uint32 `json:"serial"`
 	}
 
-	fmt.Fprintf(w, "Cache size: %d\n", dnsRR.Len())
-	fmt.Fprintf(w, "Cache age: %s\n", dnsRR.Age())
-	fmt.Fprintf(w, "Uptime: %s\n", uptime())
+	ret := struct {
+		Zones  map[string]zoneSerial
+		Size   int
+		Age    string
+		Uptime string
+	}{
+		Zones:  map[string]zoneSerial{},
+		Size:   dnsRR.Len(),
+		Age:    dnsRR.Age().String(),
+		Uptime: uptime().String(),
+	}
+
+	dnsRR.RLock()
+	for _, s := range dnsRR.soas {
+		z := s.Header().Name
+		ret.Zones[z] = zoneSerial{Serial: s.Serial}
+	}
 	dnsRR.RUnlock()
 
+	j, err := json.Marshal(ret)
+	if err != nil {
+		log.Println("Error:", err)
+		os.Exit(1)
+	}
+
+	fmt.Fprintf(w, string(j))
 }
 
 func uptime() time.Duration {
