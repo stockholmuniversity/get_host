@@ -2,8 +2,7 @@
 
 get_host is an DNS cache with HTTP REST API that enables easy lookups against part of hostname.
 
-The primary goal, why I have written it, is to enable tab completion for ssh to hosts. This includes hostnames I don't know, don't remember
-or usually cant spell from my mind.
+The primary goal, why I have written it, is to enable tab completion for ssh to hosts. This includes hosts that not yet have been connected to (In other words, hosts that is not saved in ~/.ssh/known_hosts).
 
 
 
