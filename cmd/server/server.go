@@ -31,6 +31,7 @@ type cache struct {
 	soas []dns.SOA
 	sync.RWMutex
 	age time.Time
+    // TODO hits int: Number of questions the server have got.
 }
 
 func (c cache) Age() time.Duration {
