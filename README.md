@@ -18,7 +18,8 @@ go build
 
 Edit example.toml, current implementation requires permission to to an AXFR ([DNS Zone transfer](https://en.wikipedia.org/wiki/DNS_zone_transfer)) from the DNS-server.
 Future version might have support for AXFR with TSIG and/or IXFR
-Staring server
+
+Starting server
 ```
 ./server -configfile example.toml
 ```
