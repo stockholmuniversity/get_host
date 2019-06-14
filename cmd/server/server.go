@@ -54,6 +54,7 @@ var verbose *bool
 var startTime time.Time
 
 func init() {
+    // TODO Use an struct "status" with both startTime and numberOfRequest?
 	startTime = time.Now()
 }
 
