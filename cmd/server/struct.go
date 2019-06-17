@@ -13,6 +13,7 @@ type cache struct {
 	soas         []dns.SOA           // soas is domains/subdomains the cache will include
 	sync.RWMutex                     // RWMutex is read/write lock
 	age          time.Time           // age is the age of the cache.
+	startTime    time.Time           /// startTime is the time the server started
 	// TODO hits int: Number of questions the server have got.
 }
 
@@ -30,4 +31,10 @@ func (c *cache) Len() int {
 	n := len(c.data)
 	c.RUnlock()
 	return n
+}
+
+// uptime return uptime since start.
+func (c cache) uptime() time.Duration {
+	t := time.Since(c.startTime)
+	return t.Truncate(time.Second)
 }

@@ -28,11 +28,10 @@ import (
 var dnsRR cache
 var tracer opentracing.Tracer
 var verbose *bool
-var startTime time.Time
 
 func init() {
 	// TODO Use an struct "status" with both startTime and numberOfRequest?
-	startTime = time.Now()
+	dnsRR.startTime = time.Now()
 }
 
 func main() {
@@ -236,7 +235,7 @@ func httpStatus(w http.ResponseWriter, r *http.Request, config *gethost.Config) 
 		Zones:  map[string]zoneSerial{},
 		Size:   dnsRR.Len(),
 		Age:    dnsRR.Age().String(),
-		Uptime: uptime().String(),
+		Uptime: dnsRR.uptime().String(),
 	}
 
 	dnsRR.RLock()
@@ -253,11 +252,4 @@ func httpStatus(w http.ResponseWriter, r *http.Request, config *gethost.Config) 
 	}
 
 	fmt.Fprintf(w, string(j))
-}
-
-// uptime return uptime since start.
-// It uses the global variable "startTime"
-func uptime() time.Duration {
-	t := time.Since(startTime)
-	return t.Truncate(time.Second)
 }
