@@ -23,7 +23,7 @@ import (
 
 	"github.com/stockholmuniversity/goversionflag"
 
-	gethost "gethost/internal"
+	gethost "github.com/spetzreborn/get_host/internal"
 )
 
 type cache struct {
@@ -31,7 +31,7 @@ type cache struct {
 	soas []dns.SOA
 	sync.RWMutex
 	age time.Time
-    // TODO hits int: Number of questions the server have got.
+	// TODO hits int: Number of questions the server have got.
 }
 
 func (c cache) Age() time.Duration {
@@ -54,7 +54,7 @@ var verbose *bool
 var startTime time.Time
 
 func init() {
-    // TODO Use an struct "status" with both startTime and numberOfRequest?
+	// TODO Use an struct "status" with both startTime and numberOfRequest?
 	startTime = time.Now()
 }
 
