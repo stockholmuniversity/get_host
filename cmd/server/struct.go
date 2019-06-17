@@ -7,14 +7,16 @@ import (
 	"github.com/miekg/dns"
 )
 
+// cache is the structure for the dns cache, mutex and meta information regarding the cache.
 type cache struct {
-	data map[string][]dns.RR
-	soas []dns.SOA
-	sync.RWMutex
-	age time.Time
+	data         map[string][]dns.RR // data is the dns cache
+	soas         []dns.SOA           // soas is domains/subdomains the cache will include
+	sync.RWMutex                     // RWMutex is read/write lock
+	age          time.Time           // age is the age of the cache.
 	// TODO hits int: Number of questions the server have got.
 }
 
+// Age returns the age of the cache. It should never get older than TTL from the config.
 func (c cache) Age() time.Duration {
 	c.RLock()
 	t := time.Since(c.age)
@@ -22,6 +24,7 @@ func (c cache) Age() time.Duration {
 	return t.Truncate(time.Second)
 }
 
+// Len returns the lenth (size) of the cache. How many dns records it holds.
 func (c *cache) Len() int {
 	c.RLock()
 	n := len(c.data)
