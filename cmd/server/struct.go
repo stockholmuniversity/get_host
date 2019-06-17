@@ -14,7 +14,7 @@ type cache struct {
 	sync.RWMutex                     // RWMutex is read/write lock
 	age          time.Time           // age is the age of the cache.
 	startTime    time.Time           /// startTime is the time the server started
-	// TODO hits int: Number of questions the server have got.
+	APIhits      int                 // hits is the number of questions the server have got.
 }
 
 // Age returns the age of the cache. It should never get older than TTL from the config.

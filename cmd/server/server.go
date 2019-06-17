@@ -27,7 +27,6 @@ import (
 
 var dnsRR cache
 var tracer opentracing.Tracer
-var verbose *bool
 
 func init() {
 	// TODO Use an struct "status" with both startTime and numberOfRequest?
@@ -35,7 +34,7 @@ func init() {
 }
 
 func main() {
-	verbose = flag.Bool("verbose", false, "Print reload and responses to questions to standard out")
+	verbose := flag.Bool("verbose", false, "Print reload and responses to questions to standard out")
 	configFile := flag.String("configfile", "", "Configuation file")
 	goversionflag.PrintVersionAndExit()
 
@@ -181,6 +180,10 @@ func httpResponse(w http.ResponseWriter, r *http.Request, config *gethost.Config
 	dnsRR.RUnlock()
 	sort.Strings(hostnames)
 
+	dnsRR.Lock()
+	dnsRR.APIhits++
+	dnsRR.Unlock()
+
 	j, err := json.Marshal(hostnames)
 	if err != nil {
 		log.Println("Error:", err)
@@ -231,11 +234,13 @@ func httpStatus(w http.ResponseWriter, r *http.Request, config *gethost.Config) 
 		Size   int
 		Age    string
 		Uptime string
+		Hits   int
 	}{
 		Zones:  map[string]zoneSerial{},
 		Size:   dnsRR.Len(),
 		Age:    dnsRR.Age().String(),
 		Uptime: dnsRR.uptime().String(),
+		Hits:   dnsRR.APIhits,
 	}
 
 	dnsRR.RLock()
