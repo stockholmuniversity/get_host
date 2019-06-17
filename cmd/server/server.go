@@ -13,7 +13,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -25,28 +24,6 @@ import (
 
 	gethost "github.com/spetzreborn/get_host/internal"
 )
-
-type cache struct {
-	data map[string][]dns.RR
-	soas []dns.SOA
-	sync.RWMutex
-	age time.Time
-	// TODO hits int: Number of questions the server have got.
-}
-
-func (c cache) Age() time.Duration {
-	c.RLock()
-	t := time.Since(c.age)
-	c.RUnlock()
-	return t.Truncate(time.Second)
-}
-
-func (c *cache) Len() int {
-	c.RLock()
-	n := len(c.data)
-	c.RUnlock()
-	return n
-}
 
 var dnsRR cache
 var tracer opentracing.Tracer
@@ -278,6 +255,8 @@ func httpStatus(w http.ResponseWriter, r *http.Request, config *gethost.Config) 
 	fmt.Fprintf(w, string(j))
 }
 
+// uptime return uptime since start.
+// It uses the global variable "startTime"
 func uptime() time.Duration {
 	t := time.Since(startTime)
 	return t.Truncate(time.Second)
