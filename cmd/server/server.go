@@ -239,7 +239,7 @@ func httpStatus(w http.ResponseWriter, r *http.Request, config *gethost.Config) 
 		Zones:  map[string]zoneSerial{},
 		Size:   dnsRR.Len(),
 		Age:    dnsRR.Age().String(),
-		Uptime: dnsRR.uptime().String(),
+		Uptime: dnsRR.Uptime().String(),
 		Hits:   dnsRR.APIhits,
 	}
 

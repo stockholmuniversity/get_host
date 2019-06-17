@@ -33,8 +33,8 @@ func (c *cache) Len() int {
 	return n
 }
 
-// uptime return uptime since start.
-func (c cache) uptime() time.Duration {
+// Uptime return uptime since start.
+func (c cache) Uptime() time.Duration {
 	t := time.Since(c.startTime)
 	return t.Truncate(time.Second)
 }
