@@ -29,7 +29,6 @@ var dnsRR cache
 var tracer opentracing.Tracer
 
 func init() {
-	// TODO Use an struct "status" with both startTime and numberOfRequest?
 	dnsRR.startTime = time.Now()
 }
 
@@ -230,17 +229,19 @@ func httpStatus(w http.ResponseWriter, r *http.Request, config *gethost.Config) 
 	}
 
 	ret := struct {
-		Zones  map[string]zoneSerial
-		Size   int
-		Age    string
-		Uptime string
-		Hits   int
+		Zones        map[string]zoneSerial
+		Size         int
+		Age          string
+		Uptime       string
+		Hits         int
+		RefreschRate int
 	}{
-		Zones:  map[string]zoneSerial{},
-		Size:   dnsRR.Len(),
-		Age:    dnsRR.Age().String(),
-		Uptime: dnsRR.Uptime().String(),
-		Hits:   dnsRR.APIhits,
+		Zones:        map[string]zoneSerial{},
+		Size:         dnsRR.Len(),
+		Age:          dnsRR.Age().String(),
+		Uptime:       dnsRR.Uptime().String(),
+		Hits:         dnsRR.APIhits,
+		RefreschRate: config.TTL,
 	}
 
 	dnsRR.RLock()
